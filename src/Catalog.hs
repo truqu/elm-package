@@ -145,7 +145,11 @@ getJson metadata metadataPath name version =
             liftIO (LBS.readFile fullMetadataPath)
 
           False ->
-            do  url <- catalog metadata [("name", Package.toString name), ("version", Package.versionToString version)]
+            do  url <- case metadata of
+                  "description" ->
+                    return $ "https://raw.githubusercontent.com/" ++ (Package.toString name) ++ "/" ++ (Package.versionToString version) ++ "/elm-package.json"
+                  _ ->
+                    catalog metadata [("name", Package.toString name), ("version", Package.versionToString version)]
                 Http.send url $ \request manager ->
                     do  response <- Client.httpLbs request manager
                         createDirectoryIfMissing True (dropFileName fullMetadataPath)

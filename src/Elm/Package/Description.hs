@@ -241,7 +241,11 @@ getDependencies obj =
                 return (name, constraint)
 
               Nothing ->
-                fail (C.errorMessage (Just rawName) rawConstraint)
+                case C.fromStringExact rawConstraint of
+                  Just constraint ->
+                    return (name, constraint)
+                  Nothing ->
+                    fail (C.errorMessage (Just rawName) rawConstraint)
 
 
 getElmVersion :: Object -> Parser C.Constraint

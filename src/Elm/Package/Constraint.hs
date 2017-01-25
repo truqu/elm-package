@@ -1,6 +1,7 @@
 module Elm.Package.Constraint
-    ( Constraint
+    ( Constraint(..)
     , fromString
+    , fromStringExact
     , toString
     , untilNextMajor
     , untilNextMinor
@@ -24,6 +25,7 @@ import qualified Elm.Compiler as Compiler
 
 data Constraint
     = Range Package.Version Op Op Package.Version
+    | Exact Package.Version
 
 
 data Op = Less | LessOrEqual
@@ -53,7 +55,8 @@ expand constraint@(Range lower lowerOp upperOp upper) version
 
   | otherwise =
       constraint
-
+expand constraint@(Exact _) _ =
+  constraint
 
 
 -- ELM CONSTRAINT
@@ -77,6 +80,9 @@ isSatisfied constraint version =
         isLess lowerOp lower version
           &&
         isLess upperOp version upper
+
+    Exact version' ->
+      version' == version
 
 
 isLess :: (Ord a) => Op -> (a -> a -> Bool)
@@ -102,6 +108,9 @@ check constraint version =
       else
         EQ
 
+    Exact version' ->
+      compare version' version
+
 
 
 -- STRING CONVERSION
@@ -118,6 +127,9 @@ toString constraint =
         , opToString upperOp
         , Package.versionToString upper
         ]
+
+    Exact version ->
+      Package.versionToString version
 
 
 opToString :: Op -> String
@@ -136,6 +148,13 @@ fromString str =
       (upperOp, rest3) <- takeOp (eatSpace rest2)
       upper <- versionFromString (eatSpace rest3)
       return (Range lower lowerOp upperOp upper)
+
+
+fromStringExact :: String -> Maybe Constraint
+fromStringExact str =
+  case versionFromString str of
+    Nothing -> Nothing
+    Just v -> Just $ Exact v
 
 
 eatSpace :: String -> String
@@ -183,7 +202,11 @@ instance Json.FromJSON Constraint where
               return constraint
 
           Nothing ->
-              fail $ errorMessage Nothing rawConstraint
+            case fromStringExact rawConstraint of
+              Just constraint ->
+                return constraint
+              Nothing ->
+                fail $ errorMessage Nothing rawConstraint
 
     parseJSON _ =
         fail "constraint must be a string that looks something like \"1.2.1 <= v < 2.0.0\"."

@@ -127,7 +127,12 @@ addConstraints packages constraints =
       return (Just packages)
 
     (name, constraint) : rest ->
-      do  versions <- Store.getVersions name
+      do  versions <-
+            case constraint of
+              C.Exact version ->
+                return [ version ]
+              _ ->
+                Store.getVersions name
           case filter (C.isSatisfied constraint) versions of
             [] ->
               return Nothing
